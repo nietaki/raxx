@@ -109,10 +109,7 @@ defmodule Raxx.View do
     compiled_page = EEx.compile_file(page_template, engine: EEx.HTMLEngine)
 
     # This step would not be necessary if the compiler could return a wrapped value.
-    safe_compiled_page =
-      quote do
-        EEx.HTML.raw(unquote(compiled_page))
-      end
+    # safe_compiled_page =
 
     compiled_layout =
       if layout_template do
@@ -123,8 +120,16 @@ defmodule Raxx.View do
 
     {compiled, has_page?} =
       Macro.prewalk(compiled_layout, false, fn
-        {:__content__, _opts, nil}, _acc ->
-          {safe_compiled_page, true}
+        {:__content__, opts, nil}, _acc ->
+          IO.inspect(opts)
+
+          # I think there is an issue with a stacktrace build from more than one file/ast.
+          # I have chosen one file so as to not need to worry about which args are intemplate and which in main view.
+          {quote file: page_template, line: Keyword.get(opts, :line, 1) do
+             (fn ->
+                EEx.HTML.raw(unquote(compiled_page))
+              end).()
+           end, true}
 
         ast, acc ->
           {ast, acc}
@@ -138,13 +143,9 @@ defmodule Raxx.View do
       import EEx.HTML, only: [raw: 1]
       import unquote(__MODULE__), only: [javascript_variables: 1]
 
-      if unquote(layout_template) do
-        @external_resource unquote(layout_template)
-        @file unquote(layout_template)
-      end
-
       @external_resource unquote(page_template)
-      @file unquote(page_template)
+      if unquote(layout_template), do: @external_resource(unquote(layout_template))
+
       def render(request, unquote_splicing(arguments)) do
         request
         |> Raxx.set_header("content-type", "text/html")
@@ -152,6 +153,9 @@ defmodule Raxx.View do
         |> Raxx.set_body("#{html(unquote_splicing(arguments)).data}")
       end
 
+      @file if unquote(layout_template),
+              do: unquote(layout_template),
+              else: unquote(page_template)
       def html(unquote_splicing(arguments)) do
         EEx.HTML.raw(unquote(compiled))
       end
