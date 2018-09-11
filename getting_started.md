@@ -376,3 +376,46 @@ Server.start_link([])
 ```
 
 `mix run --no-halt server.exs`
+
+---
+This is a roadmap issue for Raxx.
+Things are loosly order by importance,
+there are two general themes, being framwork ready and API stability.
+Raxx is not a framwork but I want using it to be compelling when compared to a framework.
+Therefore there are several things that might not end up in this project but are still part of getting to 1.0
+
+Good sources of inspiration Hanami, Pyramind, Sinatra
+
+### Improve words around principles
+
+- Functional Cohesion
+- No middleware
+- HTTP/2 driven, no bulk send file, although individual servers can implement that.
+
+Add documentation sections to the following that just say discouraged and link to principles.
+
+- Authentication middleware.
+  Use plain functions and some other composition such as OK
+- Before and after callbacks
+  find a real example use composition
+- Halt,
+  just really an early return
+- Helpers not so much discouraged just use imports
+- Partials, just helpers made from templates. maybe use function from file with EEx inplace.
+
+#### You might not need a framwork
+
+#### Single file applications
+This can probably be writen about now.
+Maybe consider adding template string option to Raxx view.
+
+#### Views Templates and Actions
+explain url scheme with entity/id/action.
+explain possibility of redux in the generated project and messages everywhere.
+
+
+
+### A solution for form validation.
+
+Quite likely this is Ecto, or similar.
+Hopefully I don't build this but just link appropriatly.
