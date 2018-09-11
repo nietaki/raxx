@@ -1,0 +1,378 @@
+# Getting Started
+
+## Contents
+- Introduction
+  - A simple server
+    - Hello, World!
+  - An Ace service
+- Web requests and responses
+  The core of Raxx is a specification for these
+- Project structure
+  - Hexagonal Architecture
+  - Web namespacing
+  - Routing
+  - Actions
+- View
+  - what is a view
+- Static Files
+
+## What is Raxx
+
+<!-- It is a specification
+It is also a toolkit -->
+
+### Why Raxx
+
+1. Adaptable/flexible
+2. Capable
+3. Useful
+4. ready for the big time
+5. Maintainable
+
+Build Apps that let you enjoy Elixir
+Lightweight
+Best practices for DDD, Architectrally sound
+
+Showtime ready
+
+It is performat.
+Because Elixir is performat
+
+
+## Ecosystem
+
+Raxx - Specification and Core library
+Ace - Server for Raxx applications that supports HTTP/1 and HTTP/2
+Raxx.Kit - Generator for bootstraping Raxx applications
+^ The  punchline to this guide if you want to set up a way that works for many run
+raxx kit example --node-
+
+## Introduction
+
+In this guide we are going to walk through creating my app,
+your app can come second.
+My app is for revolutionising hospitality and will be the subject of these guides.
+
+#### Impatient?
+
+These guides detail all the parts of a Raxx based web application.
+Just want to jump in, use `Raxx.Kit` and generate a fully working we application.
+
+#### Prerequisits
+
+These guides assume you have:
+
+1. [erlang and Elixir installed]()
+
+Stop for a new section here
+
+
+### A simple server
+
+Do without Ace.HTTP.Service
+
+Then start with Ace.
+
+Then say helpful Ace (or maybe even later in the runtime vs compile time config.)
+
+
+## Project Structure
+
+Raxx is just a library any project structure can be used,
+including single file applications. (Appendix 1)
+
+However as a project gets larger it is useful to have more structure.
+Below is a suggestion for handling
+
+#### Separate delivery interfaces
+
+**Domain Model** **interface**
+
+A web interface is just one way to access the core business logic of an application.
+They may be other interfaces, including other web interfaces.
+
+**Namespace the web layer**
+For example `MyApp.WWW`
+
+Why not `Web` well because there might be more than one web based interface.
+
+If our first endpoint is `myapp.com` this is the same `www.myapp.com`.
+
+Feel free to choose another, such as `MyApp.API` if you know that's what you are building.
+
+and everything will live in `lib/my_app/www`.
+
+#### Routing
+
+`Raxx.Router` is included in the core project.
+This uses the power of Elixir pattern matching to dispatch to action module.
+
+**Raxx Endpoints**
+The action module is just another Raxx app,
+there is nothing else special about them.
+
+In the case of a very large app they could be another router which does it's own mapping to actions.
+
+THIS IS SOMETHING MOST LIKELY TO CHANGE
+
+#### Actions
+
+An action is an endpoint that handles a HTTP request for a specific route.
+
+##### Namespacing
+
+Because an application might have a lot of actions.
+It is usually useful to put them in their own directory.
+
+`lib/my_app/www/actions/sign_up.ex`
+
+##### A Simple Action
+
+*Why `Raxx.Server`, well each action could be started individually as a server.
+Only it wouldn't understand all the other requests that your application might get.*
+
+#### Request & Response
+
+The request is always a `Raxx.Request` struct.
+The action must always return a response
+
+
+## View Layer
+
+A view transforms a response from the **domain model** to a HTTP response,
+i.e. something for the
+
+A view is a module responsible for rendering a template.
+(So far this has been the same as our action model, we can extract by making it more explicit)
+`Raxx.View` helps create this modules using `.eex` templates.
+
+*EEx (Embedded Elixir) is a way to embed elixir code in a string.*
+
+### A simple view
+
+Add template here
+
+This template makes use of the `user` variable.
+We must tell our view to expect this as an argument to the `render` function it will create.
+
+All the variables in a template must be provided as arguments to the view
+
+```elixir
+# lib/my_app/actions/show_user.ex
+defmodule ShowUser do
+  use Raxx.Server
+  use Raxx.View, arguments: [:user], template: "show_user.html.eex"
+
+  def handle_request(_request, _response) do
+    response(:ok)
+    |> render(%{name: "Gary"})
+    # set_body
+  end
+end
+```
+Our view also creates a render function which knows the mime type
+
+If you wanted could just define the following
+```elixir
+def render(response, user) do
+  response
+  |> set_header("content-type", "text/html")
+  |> set_body(text(user))
+end
+
+def text(user) do
+  "Hello, #{user.name}!"
+end
+```
+---
+
+The response function is included by the Server, and render by the view
+
+In this example our action and view are the same module.
+
+This is another way that functional cohesion is promoted.
+All the parts of our our application that help with the single task of "showing a user" are grouped together.
+
+Raxx encourages you to keep actions and templates together.
+
+<!-- - `lib/my_app/www/actions/show_user.ex`
+- `lib/my_app/www/actions/show_user.html.eex` -->
+
+*In this case we could have not specifiec the template,
+Raxx.View would have assumed the template was in a file with the same name, but different extension*
+
+
+That doesn't mean that you can't have reusable stuff.
+
+Sending JSON is easy, use `Jason`
+
+### Views and Actions
+
+Grouping things by task is encouraged.
+However grouping by type (logical cohesion) is easy to achieve.
+
+```elixir
+# lib/my_app/actions/show_user.ex
+defmodule MyApp.WWW.Actions.ShowUser do
+  use Raxx.Server
+
+  def handle_request(_request, _response) do
+    response(:ok)
+    |> Views.ShowUser.render(%{username: "Gary"})
+  end
+end
+```
+
+```elixir
+# lib/my_app/views/show_user.ex
+defmodule MyApp.WWW.Views.ShowUser do
+  use Raxx.View, arguments: [:user], template: "../templates/show_user.html.eex"
+end
+```
+
+## Layouts
+Try Raxx.Layout
+
+## Partials
+
+A partial, short for partial template, is just a function to render content that is used in a larger template.
+
+```elixir
+user_template = """
+<img> <%= user.avatar %>
+<%= user.username %>
+"""
+EEx.function_from_string(:defp, :user_partial, user_template, [:user])
+```
+
+To use this function in a template it needs to be defined, or imported, in the corresponding view module.
+Remember all functions defined in a layout are imported into the view.
+
+## Helpers
+
+To use helpers import a module.
+
+e.g.
+
+```elixir
+defmodule MyApp.WWW.Actions.SignUp do
+  use Raxx.Server
+  use Raxx.View
+  import MyApp.WWW.Helpers
+
+  defp my_function do
+    "This is also available in the view"
+  end
+end
+```
+
+By default any layout modules, that use `Raxx.Layout`, will be imported in to views derrived from them.
+
+## Assets
+After creating a HTML view static assets are a good next section
+
+Static assets can be served using `Raxx.Static`
+
+Static assets are part web interface and so also part of our www directory.
+Assets that can be served directly to the client are kept in the public dir.
+e.g. `lib/my_app/www/public`
+
+## Control Flow
+
+### Error Handling
+
+A server should send a response every case,
+
+Ace has us covered in case of a crash and will send an internal_server_error.
+However we should do better and help the client if they send us bad content.
+
+Raxx doesn't provide any additional utilies for error handling,
+as there are several ways to compose code that might fail.
+
+One of these is with but a suggestion I like it `OK`
+
+Needs to come after parametes
+
+### Halting
+
+#### Initialization and configuration
+
+## Building Assets
+
+Raxx makes it very easy to set up npm to build assets.
+This is part of the Raxx.Kit project use the `--node-assets` flag
+
+## Sessions
+
+Writing a session will send header even if nothing has changed.
+This is done to update the liveness times but you might not want to do this.
+
+## Flash
+
+Other frameworks do alot of work for this because it's not very HTTPy
+
+Just pop and then save new session if it gets used
+
+use Query strings for flash.
+Find nice JS that cleans up clearing the message
+
+### Input Validation
+
+https://blog.lelonek.me/form-objects-in-elixir-6a57cf7c3d30
+https://stackoverflow.com/questions/31987989/form-objects-with-elixir-and-phoenix-framework
+https://elixirforum.com/t/form-validation-without-ecto/6804/5
+https://medium.com/@feymartynov/validating-controller-params-with-ecto-and-plug-in-phoenix-5fe2cf77a224
+https://groups.google.com/forum/#!topic/elixir-lang-talk/jn57CaP0Cgs
+https://github.com/CargoSense/vex
+- has renderers
+https://elixirforum.com/t/json-validation-with-defaults/7952
+https://medium.com/@QuantLayer/writing-custom-validations-for-ecto-changesets-4971881c7684
+https://www.amberbit.com/blog/2017/12/27/ecto-as-elixir-data-casting-and-validation-library/
+https://gist.github.com/laserlemon/a87120155f7c4bf18cd5c15213333790
+http://blog.plataformatec.com.br/2016/05/ectos-insert_all-and-schemaless-queries/
+https://github.com/elixir-ecto/ecto/issues/2558
+https://www.mitchellhanberg.com/post/2017/10/23/encoding-ecto-validation-errors-in-phoenix/
+https://hexdocs.pm/ecto/Ecto.Changeset.html#traverse_errors/2
+
+## Appendix 1: Single file applications.
+
+Best is a two file application, use `mix.exs` to manage dependency
+
+```elixir
+defmodule Single.MixProject do
+  use Mix.Project
+
+  def project do
+    [
+      app: :single,
+      version: "0.1.0",
+      elixir: "~> 1.7",
+      start_permanent: Mix.env() == :prod,
+      deps: deps()
+    ]
+  end
+
+  def application do
+    [extra_applications: [:logger]]
+  end
+
+  defp deps do
+    [{:ace, "0.16.8"}]
+  end
+end
+```
+
+```elixir
+defmodule Server do
+  use Ace.HTTP.Service, port: 8080, cleartext: true
+
+  def handle_request(_request, _state) do
+    response(:ok)
+    |> set_body("Hello, World!")
+  end
+end
+
+Server.start_link([])
+```
+
+`mix run --no-halt server.exs`
