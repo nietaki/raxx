@@ -1,45 +1,57 @@
 # Getting Started
 
 ## Contents
+- What is Raxx?
+- Why Raxx?
 - Introduction
-  - A simple server
-    - Hello, World!
+  - Impatient?
+  - Prerequisits
+- A simple server
+  - Hello, World!
   - An Ace service
-- Web requests and responses
-  The core of Raxx is a specification for these
+  - Requests & Responses
 - Project structure
   - Hexagonal Architecture
-  - Web namespacing
-  - Routing
-  - Actions
-- View
+  - The core domain
+  - The WWW directory
+- Routing
+  - parameters
+  - halting
+  - api blueprint
+- Actions
+  - control flow
+  - error handling
+  - Authentication
+- Views
   - what is a view
+  - Helpers
+  - Partials
+  - Layouts
+  - EExHTML
+- Initialization and configuration
+  - runtime vs compiletime
+- Testing
 - Static Files
+  - node assets
+- Logging
+- Sessions
+  - Flash Messages
 
 ## What is Raxx
 
-<!-- It is a specification
-It is also a toolkit -->
+Raxx is a toolkit to make web application with Elixir simple.
+It is designed to get out of the way and let you develop any kind of application.
 
-### Why Raxx
+## Why Raxx
 
-1. Adaptable/flexible
-2. Capable
-3. Useful
-4. ready for the big time
-5. Maintainable
-
-Build Apps that let you enjoy Elixir
-Lightweight
-Best practices for DDD, Architectrally sound
-
-Showtime ready
-
-It is performat.
-Because Elixir is performat
-
-
-## Ecosystem
+1. Adaptable/flexible - Lightweight
+  A web layer is just one part of your application,
+  Raxx makes very few assumptions about how your application is structured
+2. Simplicity
+  purity request/response just data structures
+  Get out the way just write the elixir you know when possible.
+3. Power full ecosystem
+  Raxx is the foundation and believes in extensibility
 
 Raxx - Specification and Core library
 Ace - Server for Raxx applications that supports HTTP/1 and HTTP/2
@@ -47,11 +59,19 @@ Raxx.Kit - Generator for bootstraping Raxx applications
 ^ The  punchline to this guide if you want to set up a way that works for many run
 raxx kit example --node-
 
+---
+
+Build Apps that let you enjoy Elixir
+Lightweight
+Best practices for DDD, Architectrally sound
+
+It is performat.
+Because Elixir is performat
+
 ## Introduction
 
-In this guide we are going to walk through creating my app,
-your app can come second.
-My app is for revolutionising hospitality and will be the subject of these guides.
+In this guide we are going to walk through creating `MyApp`, your app can come second.
+`MyApp` is going to revolutionise hospitality.
 
 #### Impatient?
 
@@ -62,45 +82,149 @@ Just want to jump in, use `Raxx.Kit` and generate a fully working we application
 
 These guides assume you have:
 
-1. [erlang and Elixir installed]()
+1. [erlang and Elixir installed](https://elixir-lang.org/install.html)
 
-Stop for a new section here
+  If you can run `mix --version` and see `1.7.0` or greater all should be good.
 
+2. A mix project
 
-### A simple server
+  Run `mix new my_app --sup`, update the generated `mix.exs` file as below
 
-Do without Ace.HTTP.Service
+```elixir
+defmodule MyApp.MixProject do
+  use Mix.Project
 
-Then start with Ace.
+  def project do
+    [
+      app: :my_app,
+      version: "0.1.0",
+      elixir: "~> 1.7",
+      start_permanent: Mix.env() == :prod,
+      deps: deps()
+    ]
+  end
 
-Then say helpful Ace (or maybe even later in the runtime vs compile time config.)
+  def application do
+    [extra_applications: [:logger]]
+  end
 
+  defp deps do
+    [{:ace, "0.17.0"}]
+  end
+end
+```
+
+3. Fetched dependencies
+
+  Run `mix deps.get`, Ace depends on Raxx and so both will be pulled into our project.
+
+## A simple server
+
+### Hello World
+
+```elixir
+# lib/my_app.ex
+defmodule MyApp do
+  use Raxx.Server
+
+  def handle_request(_request, _state) do
+    response(:ok)
+    |> set_header("content-type", "text/plain")
+    |> set_body("Hello, World!")
+  end
+end
+```
+
+This simple server fully specifies our simple application.
+
+### An Ace service
+
+To start, save the updated app code.
+Then start an iex session in the project that loads the mix project.
+
+```
+$ iex -S mix
+iex> Ace.HTTP.Service.start_link({MyApp, []}, port: 8080, cleartext: true)
+{:ok, #PID<...>}
+```
+
+### Request & Response
+
+The purpose of a web server is to respond to a clients HTTP request with a HTTP response.
+
+All the information from the request is parsed to a `Raxx.Request` struct.
+The `handle_request/2` callback must always return a response.
+
+```elixir
+# lib/my_app.ex
+defmodule MyApp do
+  use Raxx.Server
+  import EExHTML
+
+  def handle_request(request, _state) do
+    name = get_query(request, "name", "World")
+
+    response(:ok)
+    |> set_header("content-type", "text/html")
+    |> set_body(html())
+  end
+
+  def html(name) do
+    ~E"""
+    <h1>Hello, <%= name %>!</h1>
+    """
+  end
+end
+```
+
+*Requests don't have to be converted directly to a Response.
+Either can be streamed, handled as parts become available, see the Streaming section for details.*
 
 ## Project Structure
 
-Raxx is just a library any project structure can be used,
-including single file applications. (Appendix 1)
+Raxx is just a library, so any project structure can be used,
+including just a single file as show already.
 
 However as a project gets larger it is useful to have more structure.
-Below is a suggestion for handling
+This section suggests a way for structuring Raxx applications.
 
-#### Separate delivery interfaces
+### Hexagonal Architecture
 
-**Domain Model** **interface**
+http://alistair.cockburn.us/Hexagonal+architecture
 
-A web interface is just one way to access the core business logic of an application.
-They may be other interfaces, including other web interfaces.
+The main purpose of this architecture is to enforce a separation of concerns between the core concern of an application and the delivery mechanisms.
+
+### The core domain
+
+This is what application does, how this is where the good stuff is/
+Nothing in this part of the application should depend on a `Raxx.Request` or `Raxx.Response`
+
+### The WWW directory
 
 **Namespace the web layer**
 For example `MyApp.WWW`
 
-Why not `Web` well because there might be more than one web based interface.
+This is the home for all the code that:
+
+a) translates HTTP requests into actions to apply to the domain
+b) translates domain data structures to HTTP responses
+
+```
+lib
+├── my_app
+│   ├── www
+```
+
+*Why not Web*
+
+A public web interface may be one of several access points to the core domain.
+They may be other interfaces, including other web interfaces,
+such as an admin portal or API.
 
 If our first endpoint is `myapp.com` this is the same `www.myapp.com`.
 
-Feel free to choose another, such as `MyApp.API` if you know that's what you are building.
-
-and everything will live in `lib/my_app/www`.
+Feel free to choose another name,
+another common namespace is `MyApp.API`.
 
 #### Routing
 
@@ -130,12 +254,6 @@ It is usually useful to put them in their own directory.
 
 *Why `Raxx.Server`, well each action could be started individually as a server.
 Only it wouldn't understand all the other requests that your application might get.*
-
-#### Request & Response
-
-The request is always a `Raxx.Request` struct.
-The action must always return a response
-
 
 ## View Layer
 
@@ -296,6 +414,11 @@ Needs to come after parametes
 ### Halting
 
 #### Initialization and configuration
+
+## Logging
+
+Explain about plug
+Say be nice to upgrade e.g hanami but not going to.
 
 ## Building Assets
 

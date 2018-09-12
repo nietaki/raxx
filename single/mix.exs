@@ -16,7 +16,6 @@ defmodule Single.MixProject do
   end
 
   defp deps do
-    # [{:ace, "0.16.8"}]
-    [{:ace, path: "../../Ace"}]
+    [{:ace, "0.17.0"}]
   end
 end
